@@ -7,15 +7,18 @@ namespace EnglishWords.Runtime.Monster
 {
     public sealed class MonsterUnit : MonoBehaviour
     {
-        private const float SECONDS_TO_REACH = 5f;
+        private const float SECONDS_TO_REACH = 15f;
+        private const string HIT_TRIGGER = "Hit";
 
         [SerializeField] private Transform _model;
+        [SerializeField] private Animator _animator;
         [SerializeField] private TMP_Text _wordLabel;
         [SerializeField] private Transform _hitPoint;
         [SerializeField] private Collider _bodyCollider;
 
         public event Action<MonsterUnit> OnVanished;
 
+        public string English => _english;
         public bool IsTargetable => _state == MonsterState.Approaching;
         public Vector3 HitPoint => _hitPoint.position;
         public float RemainingDistance => Vector3.Distance(transform.position, _destination);
@@ -38,13 +41,13 @@ namespace EnglishWords.Runtime.Monster
             _model.forward = destination - transform.position;
         }
 
-        public bool Matches(string input) => string.Equals(_english, input, StringComparison.OrdinalIgnoreCase);
-
-        // 被弾したものは当たり判定と入力対象から外れる。消滅は着弾時のVanishで行う
+        // 被弾したものは当たり判定と入力対象から外れる。倒れる動きを見せるので前進も止める。消滅は着弾時のVanishで行う
         public void MarkHit()
         {
             _state = MonsterState.Hit;
             _bodyCollider.enabled = false;
+            _animator.SetTrigger(HIT_TRIGGER);
+            enabled = false;
         }
 
         public void Vanish()
@@ -52,6 +55,9 @@ namespace EnglishWords.Runtime.Monster
             OnVanished?.Invoke(this);
             Destroy(gameObject);
         }
+
+        // 前進だけを止める。当たり判定と頭上の日本語はそのまま残す
+        public void Halt() => enabled = false;
 
         private void Update()
         {

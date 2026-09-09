@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using EnglishWords.Runtime.Audio;
 using EnglishWords.Runtime.Effect;
 using EnglishWords.Runtime.Magic;
 using EnglishWords.Runtime.Monster;
@@ -21,8 +22,10 @@ namespace EnglishWords.Runtime.GameFlow
         [SerializeField] private MonsterSpawner _spawner;
         [SerializeField] private TypingInput _typingInput;
         [SerializeField] private MagicLauncher _magicLauncher;
+        [SerializeField] private WizardAnimator _wizardAnimator;
         [SerializeField] private DefenseLine _defenseLine;
         [SerializeField] private CameraShake _cameraShake;
+        [SerializeField] private SePlayer _sePlayer;
         [SerializeField] private HudView _hud;
         [SerializeField] private ResultView _resultView;
 
@@ -37,31 +40,46 @@ namespace EnglishWords.Runtime.GameFlow
             _session = new GameSession(INITIAL_LIFE, SPAWN_DURATION_SECONDS);
 
             var csv = Resources.Load<TextAsset>(WORD_RESOURCE_PATH);
-            _spawner.Initialize(new WordProvider(WordCsvParser.Parse(csv.text)));
+            var words = WordCsvParser.Parse(csv.text);
+            _spawner.Initialize(new WordProvider(words));
+            _typingInput.Initialize(new TypingJudge(new WordSpellings(words)));
 
             _hud.SetPoint(_score.Point);
             _hud.SetLife(_session.RemainingLife);
             _hud.SetElapsedSeconds(0f);
-            _hud.SetInputText(string.Empty);
+            _hud.ClearInputText();
         }
 
         // 入力の解釈から出来事を受け取り、演出・得点・進行の各担当へ配る
         private void OnEnable()
         {
+            _typingInput.OnTyped += _sePlayer.PlayKeyStroke;
             _typingInput.OnDefeated += _magicLauncher.Launch;
+            _typingInput.OnDefeated += CastMagic;
             _typingInput.OnDefeated += AddDefeat;
             _typingInput.OnMissed += AddMiss;
             _typingInput.OnTextChanged += _hud.SetInputText;
+            _magicLauncher.OnImpact += _sePlayer.PlayMonsterHit;
             _defenseLine.OnMonsterReached += LoseLife;
         }
 
         private void OnDisable()
         {
+            _typingInput.OnTyped -= _sePlayer.PlayKeyStroke;
             _typingInput.OnDefeated -= _magicLauncher.Launch;
+            _typingInput.OnDefeated -= CastMagic;
             _typingInput.OnDefeated -= AddDefeat;
             _typingInput.OnMissed -= AddMiss;
             _typingInput.OnTextChanged -= _hud.SetInputText;
+            _magicLauncher.OnImpact -= _sePlayer.PlayMonsterHit;
             _defenseLine.OnMonsterReached -= LoseLife;
+        }
+
+        // 詠唱の見た目と音は対象を問わないので、撃破イベントの引数は渡さない
+        private void CastMagic(MonsterUnit monster)
+        {
+            _wizardAnimator.PlayCast();
+            _sePlayer.PlayMagicCast();
         }
 
         private void AddDefeat(MonsterUnit monster)
@@ -70,18 +88,25 @@ namespace EnglishWords.Runtime.GameFlow
             _hud.SetPoint(_score.Point);
         }
 
-        private void AddMiss(string input)
+        private void AddMiss()
         {
-            _score.AddMiss(input);
+            _score.AddMiss();
             _hud.ShowMiss();
+            _sePlayer.PlayWordMissed();
         }
 
         private void LoseLife(MonsterUnit monster)
         {
+            // 終了と同じフレームに到達したモンスターでライフを減らさない
+            if (IsFinished)
+                return;
+
+            _score.AddMissedWord(monster.English);
             monster.Vanish();
             _session.LoseLife();
             _hud.SetLife(_session.RemainingLife);
             _cameraShake.Play();
+            _sePlayer.PlayWizardDamaged();
 
             if (_session.IsDefeated)
                 Finish(GameResult.Defeated);
@@ -106,7 +131,7 @@ namespace EnglishWords.Runtime.GameFlow
 
         private void UpdateResultInput()
         {
-            // 撃破のEnterやゲームオーバーと同じフレームの入力を拾わない
+            // クリアやゲームオーバーと同じフレームの入力を拾わない
             if (Time.frameCount == _finishedFrame)
                 return;
 
@@ -117,10 +142,12 @@ namespace EnglishWords.Runtime.GameFlow
                 _gameFlow.RequestReturnToTitle();
         }
 
+        // 勝敗が決まったら進行を止め、リザルトのEnter・Escの受付だけを残す
         private void Finish(GameResult result)
         {
             _finishedFrame = Time.frameCount;
             _typingInput.enabled = false;
+            _spawner.HaltMonsters();
             _resultView.Show(result, _score);
         }
     }

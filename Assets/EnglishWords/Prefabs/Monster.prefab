@@ -178,7 +178,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -328,6 +328,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: EnglishWords.Runtime::EnglishWords.Runtime.Monster.MonsterUnit
   _model: {fileID: 2831660756766124903}
+  _animator: {fileID: 2744829593382039601}
   _wordLabel: {fileID: 111456512297919436}
   _hitPoint: {fileID: 3924700038702457941}
   _bodyCollider: {fileID: 6848979417439846089}
@@ -383,11 +384,24 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 95960775912527714, guid: aa4de824abd97724da42ffc9d2b3c275, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 5a0b43e98822d49b98989ba67e133e42, type: 2}
+    - target: {fileID: 95960775912527714, guid: aa4de824abd97724da42ffc9d2b3c275, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: aa4de824abd97724da42ffc9d2b3c275, type: 3}
+--- !u!95 &2744829593382039601 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 95960775912527714, guid: aa4de824abd97724da42ffc9d2b3c275, type: 3}
+  m_PrefabInstance: {fileID: 2829241509845870419}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2831660756766124903 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4336874656255028, guid: aa4de824abd97724da42ffc9d2b3c275, type: 3}

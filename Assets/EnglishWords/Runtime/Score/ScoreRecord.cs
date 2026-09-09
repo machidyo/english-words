@@ -9,16 +9,16 @@ namespace EnglishWords.Runtime.Score
         public int Point { get; private set; }
         public int DefeatCount { get; private set; }
         public int MaxCombo { get; private set; }
-        public IReadOnlyList<string> MissedInputs => _missedInputs;
-        public float Accuracy => _submitCount == 0 ? 1f : (float)DefeatCount / _submitCount;
+        public IReadOnlyList<string> MissedWords => _missedWords;
+        public float Accuracy => _judgedCount == 0 ? 1f : (float)DefeatCount / _judgedCount;
 
-        private readonly List<string> _missedInputs = new();
-        private int _submitCount;
+        private readonly List<string> _missedWords = new();
+        private int _judgedCount;
         private int _combo;
 
         public void AddDefeat()
         {
-            _submitCount++;
+            _judgedCount++;
             DefeatCount++;
             Point += POINT_PER_DEFEAT;
             _combo++;
@@ -26,11 +26,13 @@ namespace EnglishWords.Runtime.Score
                 MaxCombo = _combo;
         }
 
-        public void AddMiss(string input)
+        public void AddMiss()
         {
-            _submitCount++;
+            _judgedCount++;
             _combo = 0;
-            _missedInputs.Add(input);
         }
+
+        // 復習に使うのは打ち間違いではなく、取りこぼしてライフを失った単語のほう
+        public void AddMissedWord(string english) => _missedWords.Add(english);
     }
 }

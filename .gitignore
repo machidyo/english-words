@@ -83,3 +83,7 @@ Thumbs.db
 # 游ゴシック: OSバンドルの商用フォントのため再配布せずgit管理対象外
 /[Aa]ssets/EnglishWords/Fonts/
 /[Aa]ssets/EnglishWords/Fonts.meta
+
+# 購入アセット（PROTOFACTOR）: 再ダウンロード可能・約3GBのためgit管理対象外
+/[Aa]ssets/PROTOFACTOR/
+/[Aa]ssets/PROTOFACTOR.meta

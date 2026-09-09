@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using EnglishWords.Runtime.Monster;
 
@@ -10,6 +11,8 @@ namespace EnglishWords.Runtime.Magic
         private const float IMPACT_EFFECT_LIFETIME = 3f;
 
         [SerializeField] private GameObject _impactEffectPrefab;
+
+        public event Action OnHit;
 
         private MonsterUnit _target;
         private float _speed;
@@ -45,6 +48,7 @@ namespace EnglishWords.Runtime.Magic
         private void Hit(Vector3 position)
         {
             Destroy(Instantiate(_impactEffectPrefab, position, Quaternion.identity), IMPACT_EFFECT_LIFETIME);
+            OnHit?.Invoke();
             _target.Vanish();
             Destroy(gameObject);
         }

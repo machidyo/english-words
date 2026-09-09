@@ -6,8 +6,8 @@ namespace EnglishWords.Runtime.Monster
 {
     public sealed class MonsterSpawner : MonoBehaviour
     {
-        private const float SPAWN_INTERVAL_SECONDS = 3f;
-        private const int MAX_ALIVE_COUNT = 5;
+        private const float SPAWN_INTERVAL_SECONDS = 2f;
+        private const int MAX_ALIVE_COUNT = 10;
 
         [SerializeField] private MonsterUnit _monsterPrefab;
         [SerializeField] private Transform[] _spawnPoints;
@@ -38,6 +38,13 @@ namespace EnglishWords.Runtime.Monster
 
             _secondsSinceSpawn = 0f;
             Spawn();
+        }
+
+        // リザルトの背後でモンスターを歩き続けさせない
+        public void HaltMonsters()
+        {
+            foreach (var monster in _activeMonsters)
+                monster.Halt();
         }
 
         private void Spawn()

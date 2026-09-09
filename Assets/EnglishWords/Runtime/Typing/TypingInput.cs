@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using EnglishWords.Runtime.Monster;
@@ -7,73 +8,75 @@ namespace EnglishWords.Runtime.Typing
 {
     public sealed class TypingInput : MonoBehaviour
     {
+        private static readonly IReadOnlyList<int> NO_INDICES = Array.Empty<int>();
+
         [SerializeField] private MonsterSpawner _spawner;
 
+        public event Action OnTyped;
         public event Action<MonsterUnit> OnDefeated;
-        public event Action<string> OnMissed;
-        public event Action<string> OnTextChanged;
+        public event Action OnMissed;
+        public event Action<string, IReadOnlyList<int>> OnTextChanged;
 
         private readonly TypingBuffer _buffer = new();
+        private TypingJudge _judge;
+
+        public void Initialize(TypingJudge judge) => _judge = judge;
 
         private void OnEnable() => Keyboard.current.onTextInput += Append;
 
         private void OnDisable() => Keyboard.current.onTextInput -= Append;
 
+        // 打つたびに突き合わせるので、確定のキーは持たない
         private void Append(char character)
         {
             if (!_buffer.TryAppend(character))
                 return;
 
-            OnTextChanged?.Invoke(_buffer.Text);
-        }
+            OnTyped?.Invoke();
 
-        private void Update()
-        {
-            var keyboard = Keyboard.current;
-            if (keyboard.backspaceKey.wasPressedThisFrame && _buffer.TryRemoveLast())
-                OnTextChanged?.Invoke(_buffer.Text);
-
-            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
-                Submit();
-        }
-
-        private void Submit()
-        {
-            if (_buffer.IsEmpty)
-                return;
-
-            var input = _buffer.Flush();
-            OnTextChanged?.Invoke(_buffer.Text);
-
-            var target = FindTarget(input);
-            if (target == null)
+            var judgement = _judge.Judge(_buffer.Text, _spawner.ActiveMonsters);
+            switch (judgement.Outcome)
             {
-                OnMissed?.Invoke(input);
-                return;
+                case TypingOutcome.Defeated:
+                    Defeat(judgement.Target);
+                    break;
+                case TypingOutcome.Missed:
+                    Miss();
+                    break;
+                default:
+                    OnTextChanged?.Invoke(_buffer.Text, judgement.MisspelledIndices);
+                    break;
             }
+        }
+
+        private void Defeat(MonsterUnit target)
+        {
+            _buffer.Flush();
+            OnTextChanged?.Invoke(_buffer.Text, NO_INDICES);
 
             // 入力完了で撃破を確定させる。魔法の飛翔は演出なので、ここで対象から外す
             target.MarkHit();
             OnDefeated?.Invoke(target);
         }
 
-        // 同じ単語が複数出ていたら、魔法使いにもっとも近いものを倒す
-        private MonsterUnit FindTarget(string input)
+        private void Miss()
         {
-            MonsterUnit nearest = null;
-            var nearestDistance = float.MaxValue;
+            _buffer.Flush();
+            OnTextChanged?.Invoke(_buffer.Text, NO_INDICES);
+            OnMissed?.Invoke();
+        }
 
-            foreach (var monster in _spawner.ActiveMonsters)
-            {
-                if (!monster.IsTargetable || !monster.Matches(input))
-                    continue;
-                if (monster.RemainingDistance >= nearestDistance)
-                    continue;
+        private void Update()
+        {
+            if (Keyboard.current.backspaceKey.wasPressedThisFrame && _buffer.TryRemoveLast())
+                Erase();
+        }
 
-                nearest = monster;
-                nearestDistance = monster.RemainingDistance;
-            }
-            return nearest;
+        // Backspaceは打ち間違いを直す操作なので、撃破もミスも起こさず綴り違いの表示だけ作り直す
+        private void Erase()
+        {
+            var judgement = _judge.Judge(_buffer.Text, _spawner.ActiveMonsters);
+            OnTextChanged?.Invoke(_buffer.Text, judgement.MisspelledIndices);
         }
     }
 }
