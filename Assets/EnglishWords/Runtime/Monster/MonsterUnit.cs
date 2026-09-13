@@ -7,7 +7,7 @@ namespace EnglishWords.Runtime.Monster
 {
     public sealed class MonsterUnit : MonoBehaviour
     {
-        private const float SECONDS_TO_REACH = 15f;
+        private const float SECONDS_TO_REACH = 20f;
         private const string HIT_TRIGGER = "Hit";
 
         [SerializeField] private Transform _model;
