@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -33,12 +34,16 @@ namespace EnglishWords.Runtime.GameFlow
         [SerializeField] private SePlayer _sePlayer;
         [SerializeField] private HudView _hud;
         [SerializeField] private ResultView _resultView;
+        [SerializeField] private RankingView _rankingView;
 
         private readonly ScoreRecord _score = new();
         private GameSession _session;
         private GameResult _result;
         private IReadOnlyList<WordEntry> _reviewWords;
+        private IReadOnlyList<ScoreEntry> _scoreEntries;
+        private ScoreEntry _currentScore;
         private int _finishedFrame = -1;
+        private bool _isRankingShown;
         private bool _isReviewing;
         private bool _isReviewed;
 
@@ -160,14 +165,29 @@ namespace EnglishWords.Runtime.GameFlow
                 return;
 
             var keyboard = Keyboard.current;
-            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
-                AdvanceFromResult();
+            var isEnterPressed = keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame;
+            if (!_isRankingShown)
+            {
+                if (isEnterPressed)
+                    ShowRanking();
+                return;
+            }
+
+            if (isEnterPressed)
+                AdvanceFromRanking();
             else if (keyboard.escapeKey.wasPressedThisFrame)
                 _gameFlow.RequestReturnToTitle();
         }
 
-        // リザルトのEnterは、取りこぼしが残っていれば復習へ、済んでいればもう一度へ進める
-        private void AdvanceFromResult()
+        private void ShowRanking()
+        {
+            _isRankingShown = true;
+            _resultView.Hide();
+            _rankingView.Show(_scoreEntries, _currentScore, _reviewWords.Count > 0);
+        }
+
+        // ランキングのEnterは、取りこぼしが残っていれば復習へ、済んでいればもう一度へ進める
+        private void AdvanceFromRanking()
         {
             if (_isReviewed || _reviewWords.Count == 0)
             {
@@ -176,7 +196,7 @@ namespace EnglishWords.Runtime.GameFlow
             }
 
             _isReviewing = true;
-            _resultView.Hide();
+            _rankingView.Hide();
             _spawner.ClearMonsters();
             _review.Begin(_reviewWords);
         }
@@ -185,7 +205,7 @@ namespace EnglishWords.Runtime.GameFlow
         {
             _isReviewing = false;
             _isReviewed = true;
-            _resultView.Show(_result, _score, false);
+            _rankingView.Show(_scoreEntries, _currentScore, false);
         }
 
         // 勝敗が決まったら進行を止め、リザルトのEnter・Escの受付だけを残す
@@ -196,7 +216,16 @@ namespace EnglishWords.Runtime.GameFlow
             _typingInput.enabled = false;
             _spawner.HaltMonsters();
             _reviewWords = ReviewWordSelector.SelectMostMissed(_score.MissedWords, REVIEW_WORD_COUNT);
-            _resultView.Show(result, _score, _reviewWords.Count > 0);
+            RecordScore();
+            _resultView.Show(result, _score);
+        }
+
+        // 今回の記録を見分けて強調できるよう、保存する前の記録に今回のインスタンスを足しておく
+        private void RecordScore()
+        {
+            _currentScore = ScoreEntry.From(_score, DateTime.Now);
+            _scoreEntries = ScoreStorage.LoadAll().Append(_currentScore).ToList();
+            ScoreStorage.Save(_currentScore);
         }
     }
 }
