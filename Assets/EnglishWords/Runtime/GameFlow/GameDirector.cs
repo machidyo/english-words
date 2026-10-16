@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using EnglishWords.Runtime.Audio;
 using EnglishWords.Runtime.Effect;
 using EnglishWords.Runtime.Magic;
 using EnglishWords.Runtime.Monster;
+using EnglishWords.Runtime.Review;
 using EnglishWords.Runtime.Score;
 using EnglishWords.Runtime.Typing;
 using EnglishWords.Runtime.UI;
@@ -16,11 +18,13 @@ namespace EnglishWords.Runtime.GameFlow
     {
         private const int INITIAL_LIFE = 3;
         private const float SPAWN_DURATION_SECONDS = 60f;
+        private const int REVIEW_WORD_COUNT = 3;
         private const string WORD_RESOURCE_PATH = "Words";
 
         [SerializeField] private GameFlowAsset _gameFlow;
         [SerializeField] private MonsterSpawner _spawner;
         [SerializeField] private TypingInput _typingInput;
+        [SerializeField] private ReviewDirector _review;
         [SerializeField] private MagicLauncher _magicLauncher;
         [SerializeField] private WizardAnimator _wizardAnimator;
         [SerializeField] private DefenseLine _defenseLine;
@@ -31,7 +35,11 @@ namespace EnglishWords.Runtime.GameFlow
 
         private readonly ScoreRecord _score = new();
         private GameSession _session;
+        private GameResult _result;
+        private IReadOnlyList<WordEntry> _reviewWords;
         private int _finishedFrame = -1;
+        private bool _isReviewing;
+        private bool _isReviewed;
 
         private bool IsFinished => _finishedFrame >= 0;
 
@@ -61,6 +69,12 @@ namespace EnglishWords.Runtime.GameFlow
             _typingInput.OnTextChanged += _hud.SetInputText;
             _magicLauncher.OnImpact += _sePlayer.PlayMonsterHit;
             _defenseLine.OnMonsterReached += LoseLife;
+
+            // 復習は覚え直すための時間なので、演出だけを配って得点には触れない
+            _review.OnTyped += _sePlayer.PlayKeyStroke;
+            _review.OnDefeated += _magicLauncher.Launch;
+            _review.OnDefeated += CastMagic;
+            _review.OnFinished += FinishReview;
         }
 
         private void OnDisable()
@@ -73,6 +87,11 @@ namespace EnglishWords.Runtime.GameFlow
             _typingInput.OnTextChanged -= _hud.SetInputText;
             _magicLauncher.OnImpact -= _sePlayer.PlayMonsterHit;
             _defenseLine.OnMonsterReached -= LoseLife;
+
+            _review.OnTyped -= _sePlayer.PlayKeyStroke;
+            _review.OnDefeated -= _magicLauncher.Launch;
+            _review.OnDefeated -= CastMagic;
+            _review.OnFinished -= FinishReview;
         }
 
         // 詠唱の見た目と音は対象を問わないので、撃破イベントの引数は渡さない
@@ -101,7 +120,7 @@ namespace EnglishWords.Runtime.GameFlow
             if (IsFinished)
                 return;
 
-            _score.AddMissedWord(monster.English);
+            _score.AddMissedWord(monster.Word);
             monster.Vanish();
             _session.LoseLife();
             _hud.SetLife(_session.RemainingLife);
@@ -116,7 +135,9 @@ namespace EnglishWords.Runtime.GameFlow
         {
             if (IsFinished)
             {
-                UpdateResultInput();
+                // 復習の打鍵とEnter・Escがぶつからないよう、リザルトの操作は引っ込める
+                if (!_isReviewing)
+                    UpdateResultInput();
                 return;
             }
 
@@ -137,18 +158,42 @@ namespace EnglishWords.Runtime.GameFlow
 
             var keyboard = Keyboard.current;
             if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
-                _gameFlow.RequestRetry();
+                AdvanceFromResult();
             else if (keyboard.escapeKey.wasPressedThisFrame)
                 _gameFlow.RequestReturnToTitle();
+        }
+
+        // リザルトのEnterは、取りこぼしが残っていれば復習へ、済んでいればもう一度へ進める
+        private void AdvanceFromResult()
+        {
+            if (_isReviewed || _reviewWords.Count == 0)
+            {
+                _gameFlow.RequestRetry();
+                return;
+            }
+
+            _isReviewing = true;
+            _resultView.Hide();
+            _spawner.ClearMonsters();
+            _review.Begin(_reviewWords);
+        }
+
+        private void FinishReview()
+        {
+            _isReviewing = false;
+            _isReviewed = true;
+            _resultView.Show(_result, _score, false);
         }
 
         // 勝敗が決まったら進行を止め、リザルトのEnter・Escの受付だけを残す
         private void Finish(GameResult result)
         {
+            _result = result;
             _finishedFrame = Time.frameCount;
             _typingInput.enabled = false;
             _spawner.HaltMonsters();
-            _resultView.Show(result, _score);
+            _reviewWords = ReviewWordSelector.SelectMostMissed(_score.MissedWords, REVIEW_WORD_COUNT);
+            _resultView.Show(result, _score, _reviewWords.Count > 0);
         }
     }
 }

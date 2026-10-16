@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EnglishWords.Runtime.Word;
 
 namespace EnglishWords.Runtime.Score
 {
@@ -9,10 +10,10 @@ namespace EnglishWords.Runtime.Score
         public int Point { get; private set; }
         public int DefeatCount { get; private set; }
         public int MaxCombo { get; private set; }
-        public IReadOnlyList<string> MissedWords => _missedWords;
+        public IReadOnlyList<WordEntry> MissedWords => _missedWords;
         public float Accuracy => _judgedCount == 0 ? 1f : (float)DefeatCount / _judgedCount;
 
-        private readonly List<string> _missedWords = new();
+        private readonly List<WordEntry> _missedWords = new();
         private int _judgedCount;
         private int _combo;
 
@@ -33,6 +34,6 @@ namespace EnglishWords.Runtime.Score
         }
 
         // 復習に使うのは打ち間違いではなく、取りこぼしてライフを失った単語のほう
-        public void AddMissedWord(string english) => _missedWords.Add(english);
+        public void AddMissedWord(WordEntry word) => _missedWords.Add(word);
     }
 }

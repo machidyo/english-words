@@ -77,7 +77,7 @@ namespace EnglishWords.Runtime.Typing
                 if (!monster.IsTargetable)
                     continue;
 
-                var misspelledIndices = FindMisspelledIndices(input, monster.English);
+                var misspelledIndices = SpellingComparison.FindMisspelledIndices(input, monster.English);
                 if (closest != null && !IsCloser(misspelledIndices, closest))
                     continue;
 
@@ -94,19 +94,6 @@ namespace EnglishWords.Runtime.Typing
                 return candidate.Count < current.Count;
 
             return candidate[0] > current[0];
-        }
-
-        // 入力が単語より長ければ、はみ出した分もすべて食い違いとして数える
-        private static List<int> FindMisspelledIndices(string input, string word)
-        {
-            var misspelledIndices = new List<int>();
-
-            for (var i = 0; i < input.Length; i++)
-            {
-                if (i >= word.Length || !IsSameLetter(input[i], word[i]))
-                    misspelledIndices.Add(i);
-            }
-            return misspelledIndices;
         }
 
         private bool IsCorrectable(string input, string word, List<int> misspelledIndices)
@@ -130,9 +117,7 @@ namespace EnglishWords.Runtime.Typing
             if (second != first + 1 || second >= word.Length)
                 return false;
 
-            return IsSameLetter(input[first], word[second]) && IsSameLetter(input[second], word[first]);
+            return SpellingComparison.IsSameLetter(input[first], word[second]) && SpellingComparison.IsSameLetter(input[second], word[first]);
         }
-
-        private static bool IsSameLetter(char left, char right) => char.ToLowerInvariant(left) == char.ToLowerInvariant(right);
     }
 }

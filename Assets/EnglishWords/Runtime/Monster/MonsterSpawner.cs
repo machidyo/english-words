@@ -8,6 +8,7 @@ namespace EnglishWords.Runtime.Monster
     {
         private const float SPAWN_INTERVAL_SECONDS = 2f;
         private const int MAX_ALIVE_COUNT = 10;
+        private const float REVIEW_SPEED_SCALE = 0.5f;
 
         [SerializeField] private MonsterUnit _monsterPrefab;
         [SerializeField] private Transform[] _spawnPoints;
@@ -37,7 +38,26 @@ namespace EnglishWords.Runtime.Monster
                 return;
 
             _secondsSinceSpawn = 0f;
-            Spawn();
+            Spawn(_wordProvider.Next());
+        }
+
+        // 復習は歩き出しを打鍵に合わせるので、止めた状態でゆっくり歩く1体を出す
+        public MonsterUnit SpawnForReview(WordEntry word)
+        {
+            var monster = Spawn(word);
+            monster.SetSpeedScale(REVIEW_SPEED_SCALE);
+            monster.Halt();
+            return monster;
+        }
+
+        private MonsterUnit Spawn(WordEntry word)
+        {
+            var spawnPoint = _spawnPoints[Random.Range(0, _spawnPoints.Length)];
+            var monster = Instantiate(_monsterPrefab, spawnPoint.position, Quaternion.identity, transform);
+            monster.Setup(word, _destination.position);
+            monster.OnVanished += Remove;
+            _activeMonsters.Add(monster);
+            return monster;
         }
 
         // リザルトの背後でモンスターを歩き続けさせない
@@ -47,13 +67,11 @@ namespace EnglishWords.Runtime.Monster
                 monster.Halt();
         }
 
-        private void Spawn()
+        // 復習は1体ずつ向き合わせたいので、残っているモンスターを消してから始める
+        public void ClearMonsters()
         {
-            var spawnPoint = _spawnPoints[Random.Range(0, _spawnPoints.Length)];
-            var monster = Instantiate(_monsterPrefab, spawnPoint.position, Quaternion.identity, transform);
-            monster.Setup(_wordProvider.Next(), _destination.position);
-            monster.OnVanished += Remove;
-            _activeMonsters.Add(monster);
+            for (var i = _activeMonsters.Count - 1; i >= 0; i--)
+                _activeMonsters[i].Vanish();
         }
 
         private void Remove(MonsterUnit monster)

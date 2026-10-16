@@ -12,6 +12,7 @@ namespace EnglishWords.Runtime.UI
         private const char LIFE_MARK = '♥';
         private const string MISSPELLED_OPEN = "<color=#FF4B4B><size=150%>";
         private const string MISSPELLED_CLOSE = "</size></color>";
+        private const string HINT_ALPHA = "<alpha=#55>";
 
         [SerializeField] private TMP_Text _pointValue;
         [SerializeField] private TMP_Text _lifeValue;
@@ -30,14 +31,11 @@ namespace EnglishWords.Runtime.UI
         private readonly StringBuilder _inputMarkup = new();
 
         // 綴りが食い違っている文字だけ赤く大きくして、Backspaceで直す位置を示す
-        public void SetInputText(string text, IReadOnlyList<int> misspelledIndices)
-        {
-            if (misspelledIndices.Count == 0)
-            {
-                _inputText.text = text;
-                return;
-            }
+        public void SetInputText(string text, IReadOnlyList<int> misspelledIndices) => SetInputText(text, misspelledIndices, string.Empty);
 
+        // 復習では、まだ打っていない残りに答えやヒントを薄く続けて見せる
+        public void SetInputText(string text, IReadOnlyList<int> misspelledIndices, string hint)
+        {
             _inputMarkup.Clear();
             for (var i = 0; i < text.Length; i++)
             {
@@ -46,6 +44,9 @@ namespace EnglishWords.Runtime.UI
                 else
                     _inputMarkup.Append(text[i]);
             }
+            if (hint.Length > 0)
+                _inputMarkup.Append(HINT_ALPHA).Append(hint);
+
             _inputText.text = _inputMarkup.ToString();
         }
 
