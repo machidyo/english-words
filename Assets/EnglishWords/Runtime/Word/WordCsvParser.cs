@@ -5,7 +5,8 @@ namespace EnglishWords.Runtime.Word
 {
     public static class WordCsvParser
     {
-        private const int FIELD_COUNT = 4;
+        public const string HEADER = "english,japanese,difficulty,category";
+        public const int FIELD_COUNT = 4;
 
         public static IReadOnlyList<WordEntry> Parse(string csv)
         {
@@ -29,7 +30,7 @@ namespace EnglishWords.Runtime.Word
         }
 
         // 日本語は複数の訳を1フィールドに持つため、""で囲んだ中の,は区切りとして扱わない
-        private static List<string> SplitFields(string line)
+        public static List<string> SplitFields(string line)
         {
             var fields = new List<string>();
             var field = new StringBuilder();

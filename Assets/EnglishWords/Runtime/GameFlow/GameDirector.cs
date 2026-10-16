@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using EnglishWords.Runtime.Audio;
@@ -19,7 +20,7 @@ namespace EnglishWords.Runtime.GameFlow
         private const int INITIAL_LIFE = 3;
         private const float SPAWN_DURATION_SECONDS = 60f;
         private const int REVIEW_WORD_COUNT = 3;
-        private const string WORD_RESOURCE_PATH = "Words";
+        private const string WORD_RESOURCE_FOLDER = "Words";
 
         [SerializeField] private GameFlowAsset _gameFlow;
         [SerializeField] private MonsterSpawner _spawner;
@@ -47,8 +48,10 @@ namespace EnglishWords.Runtime.GameFlow
         {
             _session = new GameSession(INITIAL_LIFE, SPAWN_DURATION_SECONDS);
 
-            var csv = Resources.Load<TextAsset>(WORD_RESOURCE_PATH);
-            var words = WordCsvParser.Parse(csv.text);
+            // スプレッドシートのタブごとにCSVが分かれているので、まとめて1つの出題範囲にする
+            var words = Resources.LoadAll<TextAsset>(WORD_RESOURCE_FOLDER)
+                .SelectMany(csv => WordCsvParser.Parse(csv.text))
+                .ToList();
             _spawner.Initialize(new WordProvider(words));
             _typingInput.Initialize(new TypingJudge(new WordSpellings(words)));
 

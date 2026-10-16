@@ -36,21 +36,36 @@
 ```text
 Assets/EnglishWords/
 ├── Runtime/            スクリプト（asmdef: EnglishWords.Runtime）
+├── Editor/             エディター拡張（asmdef: EnglishWords.Editor）。単語の取り込み
 ├── Prefabs/            Monster, MagicBolt
 ├── Scenes/             Start, Main
-├── ScriptableObjects/  GameFlow（Start と Main をつなぐイベント）
+├── ScriptableObjects/  GameFlow（Start と Main をつなぐイベント）、WordSheetSettings（取り込み元のシート）
 ├── Materials/          Ground
 ├── Fonts/              日本語TMPフォント（リポジトリには含まない。セットアップ参照）
-└── Resources/          Words.csv（出題データ）
+└── Resources/Words/    出題データのCSV。スプレッドシートのタブごとに1ファイル
 ```
 
 ## 出題データ
 
-`Assets/EnglishWords/Resources/Words.csv`。1行目は見出し。
+Googleスプレッドシートで管理し、タブごとに`Assets/EnglishWords/Resources/Words/<名前>.csv`へ取り込む。ゲームはこのフォルダーのCSVをすべて出題する。
+
+### 取り込み方
+
+1. シートを「リンクを知っている全員」に閲覧可で共有する
+2. `Assets/EnglishWords/ScriptableObjects/WordSheetSettings`に、シートのID（URLの`/d/`と`/edit`の間）と、タブごとの書き出し名・gid（タブを開いたURLの`gid=`）を登録する
+3. メニューの **EnglishWords > Import Words From Spreadsheet** を実行する
+
+全タブを検証し終えてから書き出す。1つでもエラーがあれば何も書き換えず、Consoleに行番号つきで理由を出す。設定から外したタブのCSVは削除される。
+
+### シートの書き方
+
+1行目は見出し。列はこの4つだけにする（メモの列を足すとエラーになる）。
 
 ```csv
 english,japanese,difficulty,category
 cat,"ねこ,ネコ",1,animal
 ```
 
-日本語は複数の訳を`"`で囲んで`,`区切りで持つ。モンスターの頭上に出るのは先頭のひとつ。
+- 日本語は複数の訳を1つのセルに`,`区切りで書く（`ねこ,ネコ`）。モンスターの頭上に出るのは先頭のひとつ
+- 英単語は英字だけ。空白・ハイフンを含む語は使えない
+- セルに`"`や改行を入れない
